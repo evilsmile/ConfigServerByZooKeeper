@@ -1,3 +1,4 @@
 *.[ao]
 *.swp
 .gitignore
+config_server_by_zk
