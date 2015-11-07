@@ -10,11 +10,13 @@
 #include <sstream>
 #include <iostream>
 
-static std::string g_timeout;
+// global config of timeout
+static int g_timeout;
 static std::string g_timeout_key = "/config/timeout";
+
 static zhandle_t *g_zkHandler;
 
-void getConfigByPath(zhandle_t* zkHandler, const std::string&  strPath);
+void getConfigByPath(zhandle_t* zkHandler, const std::string& strPath, std::string& strData);
 
 void zk_watcher_g(zhandle_t* zh, int type, int state, const char* path,void *watcherCtx)
 {
@@ -38,7 +40,11 @@ void zk_watcher_g(zhandle_t* zh, int type, int state, const char* path,void *wat
 	if (strncmp(path, g_timeout_key.c_str(), g_timeout_key.size()) == 0)
 	{
 		std::cout << "TIMEOUT Config UPDATED!\n";
-		getConfigByPath(zh, path);
+		std::string strData;
+		getConfigByPath(zh, path, strData);
+		std::cout << "data: " << strData << "...\n";
+		g_timeout = atoi(strData.c_str());
+		std::cout << "[New timeout value]: " << g_timeout << std::endl;
 	}
 }
 
@@ -65,7 +71,7 @@ void create(zhandle_t* zkHandler, const std::string strPath, const std::string& 
 
 }
 
-void getConfigByPath(zhandle_t* zkHandler, const std::string&  strPath)
+void getConfigByPath(zhandle_t* zkHandler, const std::string& strPath, std::string& strData)
 {
 	std::cout << "[Get data in sync mode...]\n";
 	char buffer[64];
@@ -79,12 +85,11 @@ void getConfigByPath(zhandle_t* zkHandler, const std::string&  strPath)
 			);
 	if (flag == ZOK)
 	{
-		g_timeout.assign(buffer, bufferLen);
-		printf("global timeout config: %s\n", g_timeout.c_str());
+		strData.assign(buffer, bufferLen);
 	} 
 	else 
 	{
-		fprintf(stderr, "ERROR get data of node '%s'\n", strPath.c_str());
+		fprintf(stderr, "ERROR when getting data of node '%s'\n", strPath.c_str());
 	}
 }	
 
@@ -115,7 +120,8 @@ void* doWatchZK(void *host)
 		pthread_exit(&ret);
 	}
 
-	getConfigByPath(g_zkHandler, g_timeout_key);
+	std::string strData;
+	getConfigByPath(g_zkHandler, g_timeout_key, strData);
 
 	while(true){}
 
