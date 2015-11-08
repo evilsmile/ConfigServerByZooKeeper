@@ -2,126 +2,40 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
-#include <zookeeper.h>
-#include <zookeeper_log.h>
 #include <pthread.h>
 #include <errno.h>
 
 #include <sstream>
 #include <iostream>
 
+#include "ZKWrapper.h"
+
 // global config of timeout
 static int g_timeout;
 static std::string g_timeout_key = "/config/timeout";
+static ZKWrapper g_zkWrapper;
 
-static zhandle_t *g_zkHandler;
-
-void getConfigByPath(zhandle_t* zkHandler, const std::string& strPath, std::string& strData);
-
-void zk_watcher_g(zhandle_t* zh, int type, int state, const char* path,void *watcherCtx)
+void watchCallback()
 {
-	static std::string EVENT[] = {
-		"ZOO_SESSION_EVENT",
-		"ZOO_NOTWATCHING_EVENT",
-		"ZOO_CREATED_EVENT",
-		"ZOO_DELETED_EVENT",
-		"ZOO_CHANGED_EVENT",
-		"ZOO_CHILD_EVENT"
-	};
+	std::string strData;
+	g_zkWrapper.getData(g_timeout_key, strData);
 
-	std::ostringstream oss;
-	oss << "Event [" << EVENT[type+2] << "]"
-			<< " of path [" 	<< path << "] happened."
-			<< " Connection state: [" << state  << "]"
-			<< " Watcher context: [" << (char*)watcherCtx << "]";
+	g_timeout = atoi(strData.c_str());
 
-	std::cout << oss.str() << std::endl;
-
-	if (strncmp(path, g_timeout_key.c_str(), g_timeout_key.size()) == 0)
-	{
-		std::cout << "TIMEOUT Config UPDATED!\n";
-		std::string strData;
-		getConfigByPath(zh, path, strData);
-		std::cout << "data: " << strData << "...\n";
-		g_timeout = atoi(strData.c_str());
-		std::cout << "[New timeout value]: " << g_timeout << std::endl;
-	}
-}
-
-void create(zhandle_t* zkHandler, const std::string strPath, const std::string& strNodeName)
-{
-	std::cout << "[Create node in sync mode...]\n";
-
-	char path_buffer[64];
-	int bufferlen = sizeof(path_buffer);
-	int flag = zoo_create(zkHandler, 
-			strPath.c_str(), strNodeName.c_str(), strNodeName.size(),
-			&ZOO_OPEN_ACL_UNSAFE, 0,
-			path_buffer, bufferlen
-			);
-	if (flag != ZOK)
-	{
-		fprintf(stderr, "Node '%s' create failed.\n", strNodeName.c_str());
-		exit(EXIT_FAILURE);
-	}
-	else
-	{
-		printf("Node '%s' created OK!\n", path_buffer);
-	}
-
-}
-
-void getConfigByPath(zhandle_t* zkHandler, const std::string& strPath, std::string& strData)
-{
-	std::cout << "[Get data in sync mode...]\n";
-	char buffer[64];
-	int bufferLen = sizeof(buffer);
-	memset(buffer, 0, bufferLen);
-
-	//1 implies that watcher is enabled.
-	int flag = zoo_get(zkHandler, 
-			strPath.c_str(), 1,
-			buffer, &bufferLen, NULL
-			);
-	if (flag == ZOK)
-	{
-		strData.assign(buffer, bufferLen);
-	} 
-	else 
-	{
-		fprintf(stderr, "ERROR when getting data of node '%s'\n", strPath.c_str());
-	}
-}	
-
-void exists(zhandle_t* zkHandler, char *path)
-{
-	int flag = zoo_exists(zkHandler, path, 1, NULL);
-
-	printf("'%s' exists flag: %d\n", path, flag);
-}
-
-void getChildren(zhandle_t *zkHandler, char *path)
-{
-	
+	std::cout << "Updated timeout value: [" << g_timeout << "]" << std::endl;
 }
 
 void* doWatchZK(void *host)
 {
-	int timeout = 30000;
-	char hello[] = "Hello Zookeeper";
-
-	zoo_set_debug_level(ZOO_LOG_LEVEL_ERROR);
-
-	g_zkHandler = zookeeper_init((char*)host, zk_watcher_g, timeout, 0, hello, 0);
-	if (g_zkHandler == NULL)
+	if (g_zkWrapper.Init((char*)host))
 	{
-		std::cerr << "ERROR: connect to zookeeper server failed!!" << std::endl;
 		int ret = EXIT_FAILURE;
 		pthread_exit(&ret);
 	}
+	g_zkWrapper.setWatchCallback(watchCallback);
 
 	std::string strData;
-	getConfigByPath(g_zkHandler, g_timeout_key, strData);
+	g_zkWrapper.getData(g_timeout_key, strData);
 
 	while(true){}
 
@@ -156,8 +70,6 @@ int main(int argc, char *argv[])
 	{
 		exit(EXIT_FAILURE);
 	}
-
-	zookeeper_close(g_zkHandler);
 
 	return 0;
 }

@@ -11,7 +11,7 @@ OBJS=$(subst .cpp,.o,${SRCS})
 all:$(BIN)
 
 $(BIN):$(OBJS)
-	$(CC) -o $@ $< $(CPPFLAGS) $(LDFLAGS)
+	$(CC) -o $@ $^ $(CPPFLAGS) $(LDFLAGS)
 
 %.o:%.cpp
 	$(CC) -c $(CPPFLAGS) -o $@ $<
