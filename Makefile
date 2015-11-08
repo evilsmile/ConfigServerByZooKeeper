@@ -23,3 +23,6 @@ $(BIN):$(OBJS)
 
 clean:
 	$(RM) -rf *.o $(BIN)
+
+clean_lib:
+	$(RM) -rf ${ZK_LIB_PATH}
