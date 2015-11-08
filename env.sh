@@ -1,0 +1,1 @@
+export LD_LIBRARY_PATH=./zk-3.4.6/lib/:$LD_LIBRARY_PATH && echo $LD_LIBRARY_PATH
