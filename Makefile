@@ -1,6 +1,7 @@
 CC=g++
-ZK_INCLUDE_PATH=/home/evil//zf-3.4.6/include/zookeeper
-ZK_LIB_PATH=/home/evil//zf-3.4.6/lib/
+ZK_BASE_DIR=./zk-3.4.6/
+ZK_INCLUDE_PATH=${ZK_BASE_DIR}/include/zookeeper
+ZK_LIB_PATH=${ZK_BASE_DIR}/lib/
 CPPFLAGS=-Wall -g -I${ZK_INCLUDE_PATH}
 LDFLAGS=-L${ZK_LIB_PATH} -lzookeeper_mt -lpthread
 
